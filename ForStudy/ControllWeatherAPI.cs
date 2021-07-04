@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Timers;
 using System.Net;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace ForStudy
 {
@@ -13,7 +15,21 @@ namespace ForStudy
         {
             string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
             WebRequest myWebRequest = WebRequest.Create(uri);
-            HttpWebResponse myHttpWebResponse = myWebRequest.GetResponse() as HttpWebResponse;
+            Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
+            while (!myHttpWebResponseTask.IsCompleted)
+            {
+                using(Timer timer = new Timer(100))
+                {
+                    timer.Elapsed += (sender, e) =>
+                    {
+                        Console.WriteLine("ダウンロード経過時間: " + DateTime.Now);
+                    };
+                    timer.Start();
+                }
+                Console.Clear();
+            }
+            Console.WriteLine("ダウンロード完了");
+            WebResponse myHttpWebResponse = myHttpWebResponseTask.Result;
             Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
             string jsonString;
             using(var streamReader = new StreamReader(myHttpWebResponseStream))
