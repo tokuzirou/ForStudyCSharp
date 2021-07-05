@@ -32,10 +32,12 @@ namespace ForStudy
                 Console.Clear();
                 Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
             }
+            //スレッドがメインに戻った時の処理
             myHttpWebResponseTask.ContinueWith((task) => {
                 Console.WriteLine($"task number {task.Id} is done.");
                 Console.WriteLine("ダウンロード完了");
             });
+            //サブスレッドの実行結果を取得
             WebResponse myHttpWebResponse = myHttpWebResponseTask.Result;
             Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
             string jsonString;
