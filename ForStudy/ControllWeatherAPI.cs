@@ -16,23 +16,26 @@ namespace ForStudy
             string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
             WebRequest myWebRequest = WebRequest.Create(uri);
             Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
+            DateTime time;
+            DateTime startTime = DateTime.Now;
             while (!myHttpWebResponseTask.IsCompleted)
             {
-                using(Timer timer = new Timer(100))
+                time = DateTime.Now;
+                using (Timer timer = new Timer(1000))
                 {
                     timer.Elapsed += (sender, e) =>
                     {
-                        Console.WriteLine("ダウンロード経過時間: " + DateTime.Now);
+                        Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
                     };
                     timer.Start();
                 }
                 Console.Clear();
+                Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
             }
             myHttpWebResponseTask.ContinueWith((task) => {
                 Console.WriteLine($"task number {task.Id} is done.");
                 Console.WriteLine("ダウンロード完了");
             });
-            //Console.WriteLine("ダウンロード完了");
             WebResponse myHttpWebResponse = myHttpWebResponseTask.Result;
             Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
             string jsonString;
