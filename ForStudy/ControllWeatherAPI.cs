@@ -28,7 +28,11 @@ namespace ForStudy
                 }
                 Console.Clear();
             }
-            Console.WriteLine("ダウンロード完了");
+            myHttpWebResponseTask.ContinueWith((task) => {
+                Console.WriteLine($"task number {task.Id} is done.");
+                Console.WriteLine("ダウンロード完了");
+            });
+            //Console.WriteLine("ダウンロード完了");
             WebResponse myHttpWebResponse = myHttpWebResponseTask.Result;
             Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
             string jsonString;
