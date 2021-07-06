@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Timers;
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -11,42 +11,45 @@ namespace ForStudy
 {
     internal class ControllWeatherAPI
     {
-        internal async Task<string> Fetch(string apiKey)
+        internal static async Task<Dictionary<DateTime, string>> Fetch(string apiKey)
         {
             string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
-            WebRequest myWebRequest = WebRequest.Create(uri);
-            Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
-            //Taskが実行している間の処理
-            DateTime time;
-            DateTime startTime = DateTime.Now;
-            //Taskが実行完了するまで、無限ループ
-            while (!myHttpWebResponseTask.IsCompleted)
+            Console.WriteLine("何回取得しますか?");
+            int count = int.Parse(Console.ReadLine());
+            IEnumerable<int> countArray = Enumerable.Range(0, count);
+            string jsonString = default(string);
+            Dictionary<DateTime, string> jsonDict = new Dictionary<DateTime, string>();
+            Stopwatch stopwatch = new Stopwatch();
+            try
             {
-                time = DateTime.Now;
-                using (Timer timer = new Timer(1000))
+                foreach (var index in countArray)
                 {
-                    timer.Elapsed += (sender, e) =>
+                    WebRequest myWebRequest = WebRequest.Create(uri);
+                    DateTime dateTime = DateTime.Now;
+                    stopwatch.Start();
+                    Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
+                    int taskId = myHttpWebResponseTask.Id;
+                    WebResponse myHttpWebResponse = await myHttpWebResponseTask;
+                    stopwatch.Stop();
+                    TimeSpan timeSpan = stopwatch.Elapsed;
+                    Console.WriteLine($"ダウンロード経過時間: {timeSpan.Milliseconds}msec");
+                    Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
+                    Console.WriteLine("ダウンロード完了");
+                    Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
+                    using (var streamReader = new StreamReader(myHttpWebResponseStream))
                     {
-                        Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
-                    };
-                    timer.Start();
+                        jsonString = streamReader.ReadToEnd();
+                    }
+                    myHttpWebResponse.Close();
+                    await Task.Delay(1000);
+                    jsonDict[dateTime] = jsonString;
                 }
-                Console.Clear();
-                Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
             }
-            //タスクの実行完了を待機
-            WebResponse myHttpWebResponse = await myHttpWebResponseTask;
-            //継続処理
-            Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
-            Console.WriteLine("ダウンロード完了");
-            Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
-            string jsonString;
-            using(var streamReader = new StreamReader(myHttpWebResponseStream))
+            catch(Exception ex)
             {
-                jsonString = streamReader.ReadToEnd();
+                Console.WriteLine(ex.ToString());
             }
-            myHttpWebResponse.Close();
-            return jsonString;
+            return jsonDict;
         }
 
         internal static JsonElement Deserialize(string jsonString)
