@@ -9,15 +9,17 @@ using System.Threading.Tasks;
 
 namespace ForStudy
 {
-    internal static class ControllWeatherAPI
+    internal class ControllWeatherAPI
     {
-        internal static string Fetch(string apiKey)
+        internal async Task<string> Fetch(string apiKey)
         {
             string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
             WebRequest myWebRequest = WebRequest.Create(uri);
             Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
+            //Taskが実行している間の処理
             DateTime time;
             DateTime startTime = DateTime.Now;
+            //Taskが実行完了するまで、無限ループ
             while (!myHttpWebResponseTask.IsCompleted)
             {
                 time = DateTime.Now;
@@ -32,13 +34,11 @@ namespace ForStudy
                 Console.Clear();
                 Console.WriteLine($"ダウンロード経過時間: {time - startTime}");
             }
-            //スレッドがメインに戻った時の処理
-            myHttpWebResponseTask.ContinueWith((task) => {
-                Console.WriteLine($"task number {task.Id} is done.");
-                Console.WriteLine("ダウンロード完了");
-            });
-            //サブスレッドの実行結果を取得
-            WebResponse myHttpWebResponse = myHttpWebResponseTask.Result;
+            //タスクの実行完了を待機
+            WebResponse myHttpWebResponse = await myHttpWebResponseTask;
+            //継続処理
+            Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
+            Console.WriteLine("ダウンロード完了");
             Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
             string jsonString;
             using(var streamReader = new StreamReader(myHttpWebResponseStream))
