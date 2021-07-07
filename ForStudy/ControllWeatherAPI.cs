@@ -12,11 +12,11 @@ namespace ForStudy
 {
     internal static class ControllWeatherAPI
     {
-        public static string apiKey { get; set; }
+        public static string ApiKey { get; set; }
 
         internal static async Task<Dictionary<DateTime, string>> FetchAsync()
         {
-            string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
+            string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + ApiKey;
             Console.WriteLine("何回取得しますか?");
             int count = int.Parse(Console.ReadLine());
             IEnumerable<int> countArray = Enumerable.Range(0, count);

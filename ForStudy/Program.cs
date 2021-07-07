@@ -7,9 +7,9 @@ namespace ForStudy
 {
     class Program
     {
-        static async void Main()
+        static async Task Main()
         {
-            ControllWeatherAPI.apiKey = "95712e3e136a6e7457e6fc6502f0afe3";
+            ControllWeatherAPI.ApiKey = "95712e3e136a6e7457e6fc6502f0afe3";
             Dictionary<DateTime, string> keyValuePairs = await ControllWeatherAPI.FetchAsync();
             foreach (var (directoryPath, filePath, jsonElementTask) in from KeyValuePair<DateTime, string> keyValuePair in keyValuePairs
                                                                        let jsonString = keyValuePair.Value
