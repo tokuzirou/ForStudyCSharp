@@ -22,10 +22,11 @@ namespace ForStudy
             IEnumerable<int> countArray = Enumerable.Range(0, count);
             Dictionary<DateTime, string> jsonDict = new Dictionary<DateTime, string>();
             Stopwatch stopwatch = new Stopwatch();
-            foreach (var index in countArray)
+            foreach (var (myWebRequest, dateTime) in from index in countArray
+                                                     let myWebRequest = WebRequest.Create(uri)
+                                                     let dateTime = DateTime.Now
+                                                     select (myWebRequest, dateTime))
             {
-                WebRequest myWebRequest = WebRequest.Create(uri);
-                DateTime dateTime = DateTime.Now;
                 stopwatch.Start();
                 Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
                 int taskId = myHttpWebResponseTask.Id;
@@ -41,9 +42,11 @@ namespace ForStudy
                     string jsonString = streamReader.ReadToEnd();
                     jsonDict[dateTime] = jsonString;
                 }
+
                 myHttpWebResponse.Close();
                 await Task.Delay(1000);
             }
+
             return jsonDict;
         }
 
