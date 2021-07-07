@@ -10,11 +10,11 @@ using System.Threading.Tasks;
 
 namespace ForStudy
 {
-    internal class ControllWeatherAPI
+    internal static class ControllWeatherAPI
     {
-        public string apiKey { get; set; }
+        public static string apiKey { get; set; }
 
-        internal async Task<Dictionary<DateTime, string>> FetchAsync()
+        internal static async Task<Dictionary<DateTime, string>> FetchAsync()
         {
             string uri = "https://api.openweathermap.org/data/2.5/weather?id=1850147&units=metric&lang=ja&appid=" + apiKey;
             Console.WriteLine("何回取得しますか?");
@@ -30,27 +30,25 @@ namespace ForStudy
                 stopwatch.Start();
                 Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
                 int taskId = myHttpWebResponseTask.Id;
-                WebResponse myHttpWebResponse = await myHttpWebResponseTask;
-                stopwatch.Stop();
-                TimeSpan timeSpan = stopwatch.Elapsed;
-                Console.WriteLine($"ダウンロード経過時間: {timeSpan.Milliseconds}msec");
-                Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
-                Console.WriteLine("ダウンロード完了");
-                Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
-                using (var streamReader = new StreamReader(myHttpWebResponseStream))
-                {
-                    string jsonString = streamReader.ReadToEnd();
-                    jsonDict[dateTime] = jsonString;
+                using(WebResponse myHttpWebResponse = await myHttpWebResponseTask){
+                    stopwatch.Stop();
+                    TimeSpan timeSpan = stopwatch.Elapsed;
+                    Console.WriteLine($"ダウンロード経過時間: {timeSpan.Milliseconds}msec");
+                    Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
+                    Console.WriteLine("ダウンロード完了");
+                    Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
+                    using (var streamReader = new StreamReader(myHttpWebResponseStream))
+                    {
+                        string jsonString = streamReader.ReadToEnd();
+                        jsonDict[dateTime] = jsonString;
+                    }
                 }
-
-                myHttpWebResponse.Close();
                 await Task.Delay(1000);
             }
-
             return jsonDict;
         }
 
-        internal async Task<JsonElement> DeserializeAsync(string jsonString)
+        internal static async Task<JsonElement> DeserializeAsync(string jsonString)
         {
             Encoding encoding = Encoding.GetEncoding("utf-8");
             using (MemoryStream memoryStream = new MemoryStream(encoding.GetBytes(jsonString)))
@@ -63,18 +61,33 @@ namespace ForStudy
             }
         }
 
-        internal async Task Save(JsonElement collection, string filePath, string directoryPath)
+        internal static async Task MoveAsync(string directoryPath)
         {
-            JsonElement document = collection.GetProperty("weather");
-            JsonElement.ArrayEnumerator weatherCollection = document.EnumerateArray();
-            Directory.CreateDirectory(directoryPath);
-            Directory.SetCurrentDirectory(directoryPath);
-            Task[] tasks = new Task[3];
-            using(StreamWriter sw = new StreamWriter(filePath))
+            await Task.Run(() => {
+                Directory.CreateDirectory(directoryPath);
+                Directory.SetCurrentDirectory(directoryPath);
+            });
+        }
+
+        internal static async Task SaveAsync(JsonElement collection, string filePath)
+        {
+            using (StreamWriter sw = new StreamWriter(filePath))
             {
+                JsonElement document = collection.GetProperty("weather");
+                JsonElement.ArrayEnumerator weatherCollection = document.EnumerateArray(); 
+                Task[] tasks = new Task[3];
                 foreach (JsonElement weather in weatherCollection)
                 {
-                    TakeWeatherIcon(weather);
+                    void TakeWeatherIconAsync()
+                    {
+                        string weatherIcon = weather.GetProperty("icon").ToString();
+                        string donloadOption = "2x.png";
+                        string uri = @"https://openweathermap.org/img/wn/" + weatherIcon + '@' + donloadOption;
+                        Uri uri1 = new Uri(uri);
+                        WebClient webClient = new WebClient();
+                        webClient.DownloadFileAsync(uri1, donloadOption);
+                    }
+                    TakeWeatherIconAsync();
                     Task task1 = Task.Run(() =>
                     {
                         sw.WriteLine("id:" + weather.GetProperty("id"));
@@ -92,16 +105,6 @@ namespace ForStudy
                     tasks[2] = task3;
                     await Task.WhenAll(tasks);
                 }
-            }
-
-            void TakeWeatherIcon(JsonElement weather)
-            {
-                string weatherIcon = weather.GetProperty("icon").ToString();
-                string donloadOption = "2x.png";
-                string uri = @"https://openweathermap.org/img/wn/" + weatherIcon + '@' + donloadOption;
-                Uri uri1 = new Uri(uri);
-                WebClient webClient = new WebClient();
-                webClient.DownloadFileAsync(uri1, donloadOption);
             }
         }
     }
