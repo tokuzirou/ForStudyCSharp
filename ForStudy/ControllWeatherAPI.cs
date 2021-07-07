@@ -63,20 +63,34 @@ namespace ForStudy
             }
         }
 
-        internal static void Save(JsonElement collection, string filePath, string directoryPath)
+        internal async Task Save(JsonElement collection, string filePath, string directoryPath)
         {
             JsonElement document = collection.GetProperty("weather");
             JsonElement.ArrayEnumerator weatherCollection = document.EnumerateArray();
             Directory.CreateDirectory(directoryPath);
             Directory.SetCurrentDirectory(directoryPath);
+            Task[] tasks = new Task[3];
             using(StreamWriter sw = new StreamWriter(filePath))
             {
                 foreach (JsonElement weather in weatherCollection)
                 {
                     TakeWeatherIcon(weather);
-                    sw.WriteLine("id:" + weather.GetProperty("id"));
-                    sw.WriteLine("main:" + weather.GetProperty("main"));
-                    sw.WriteLine("description:" + weather.GetProperty("description"));
+                    Task task1 = Task.Run(() =>
+                    {
+                        sw.WriteLine("id:" + weather.GetProperty("id"));
+                    });
+                    tasks[0] = task1;
+                    Task task2 = Task.Run(() =>
+                    {
+                        sw.WriteLine("main:" + weather.GetProperty("main"));
+                    });
+                    tasks[1] = task2;
+                    Task task3 = Task.Run(() =>
+                    {
+                        sw.WriteLine("description:" + weather.GetProperty("description"));
+                    });
+                    tasks[2] = task3;
+                    await Task.WhenAll(tasks);
                 }
             }
 
