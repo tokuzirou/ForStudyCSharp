@@ -10,17 +10,18 @@ namespace ForStudyOperatingBlowser
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             GetCookies getCookies = new GetCookies();
             IReadOnlyCollection<Cookie> cookies = await Task.Run(() => getCookies.GetAllCookies());
             string directoryPath = @"C:\Users\user\cookies_edge";
             string filePath = "cookies.txt";
-            Task task = getCookies.WriteCookieFileAsync(cookies, directoryPath, filePath);
-            //呼び出し元(メインスレッド)に戻った時にすぐに待機処理が実行される
-            //当然完了通知はタスクが完了してからとなる
-            task.Wait();
-            Console.WriteLine("完了しました");
+            //getIOAsyncとWriteCookieFileAsyncはスレッドセーフ
+            await getCookies.getIOAsync(directoryPath, filePath);
+            await getCookies.WriteCookieFileAsync(cookies, directoryPath, filePath);
+            //await Task.Run(() => { for (int i = 0; i < 100000; i++)
+            //        Console.WriteLine(i);
+            //});
             Console.Read();
         }
     }
