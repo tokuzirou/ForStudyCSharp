@@ -13,19 +13,16 @@ namespace ForStudyOperatingBlowser
         static async Task Main()
         {
             GetCookies getCookies = new GetCookies();
-            //オブジェクトを渡したときは、実行されない
-            //Task<IReadOnlyCollection<Cookie>> cookieTask = Task.Run(() => getCookies.GetAllCookies());
-            //when i write the awaitable code, the code is executing.
-            //IReadOnlyCollection<Cookie> cookie = await cookieTask;
-
-            //下と同様awaitはCookieをとってきて、Aを表示するとこまで待つけど、その中のTaskは別スレッドなので待たないでBvを表示
-            getCookies.Cookies = await Task.Run(() => getCookies.GetAllCookies());
-            Console.WriteLine("Bv");
+            Task<IReadOnlyCollection<Cookie>> cookieTask = getCookies.GetAllCookiesAsync();
+            Console.WriteLine("awaitで戻ってきた！");
             string directoryPath = @"C:\Users\user\cookies_edge";
             string filePath = "cookies.txt";
-            //awaitは飛ばした先でのTaskは感知して待つけど、飛ばした先でのさらに先の飛ばした先が存在する場合、それは待たずに下に行く
-            await getCookies.GetIOAsync(directoryPath, filePath);
-            Console.WriteLine("aaa");
+            //async Task Mainの呼び出し元であるvoid Mainに戻り、cookieTaskの実行完了を待つまで、下の行には行かない
+            getCookies.Cookies = await cookieTask;
+            Console.WriteLine("awaitでCookiesを取得できた！");
+            Task getCookieTask = getCookies.GetIOAsync(directoryPath, filePath);
+            await getCookieTask;
+            Console.WriteLine("awaitでTask型のオブジェクトを終わるまで待機した！");
             Console.Read();
         }
     }

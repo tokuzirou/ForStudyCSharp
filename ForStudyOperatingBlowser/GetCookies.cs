@@ -21,20 +21,22 @@ namespace ForStudyOperatingBlowser
             this.Driver = new EdgeDriver(service);
         }
 
-        public IReadOnlyCollection<Cookie> GetAllCookies()
-        { 
-            IReadOnlyCollection<Cookie> cookies = Driver.Manage().Cookies.AllCookies;
-            Console.WriteLine("A");
-            Task.Delay(10000).ContinueWith((_) => Console.WriteLine("VVV"));
+        public async Task<IReadOnlyCollection<Cookie>> GetAllCookiesAsync()
+        {
+            IReadOnlyCollection<Cookie> cookies = default;
+            await Task.Run(() =>
+            {
+                cookies = Driver.Manage().Cookies.AllCookies;
+            });
             return cookies;
         }
 
-        public Task GetIOAsync(string directoryPath, string filePath)
+        public async Task GetIOAsync(string directoryPath, string filePath)
         {
             string absolutePath = directoryPath + @"\" + filePath;
             //タスクオブジェクトを返す(呼び出し元でawaitさせて、別のスレッドでタスクを起動させる)
             //呼び出し元のスレッドがフリーズしないことに意味がある＝タスク処理が遅いかもだけど、UIがフリーズしない
-            return Task.Run(() =>
+   　　     await Task.Run(() =>
             {
                 if (!Directory.Exists(directoryPath))
                     Directory.CreateDirectory(absolutePath);
@@ -53,20 +55,20 @@ namespace ForStudyOperatingBlowser
             }).ContinueWith((_) =>
             {
                 Console.WriteLine("継続taskCの始まり");
-                Task.Run(() =>
-                {
-                    //排他的に処理しても、こっちが先に実行されると、absolutePathにファイルが存在するとは限らないのでエラー
-                    //変える必要有
-                    //Taskをnewだけして、下のメソッドの中でawaitで呼び出す形式するか、ラムダにするか
-                    using (StreamWriter sw = new StreamWriter(absolutePath))
-                    {
-                        sw.WriteLine(Cookies.ToString());
-                        Console.WriteLine("GGGGGGGG");
-                    }
-                });
-                Console.WriteLine("継続taskCの終了(上のタスクは別の非同期スレッドに飛ばされたまま)");
-                Task.Delay(2000).ContinueWith((task) => Console.WriteLine(task.Status));
+                //ここでawaitだとasync Mainの最後のコンソールが表示されることになるので、Waitで明示的に待つ
+                WriteFile().Wait();
             });
+
+            async Task WriteFile()
+            {
+                using (StreamWriter sw = new StreamWriter(absolutePath))
+                {
+                    sw.WriteLine(Cookies.ToString());
+                    Console.WriteLine("GGGGGGGG");
+                }
+                Console.WriteLine("継続taskCの終了(上のタスクは別の非同期スレッドに飛ばされたまま)");
+                await Task.Delay(2000).ContinueWith((taska) => Console.WriteLine(taska.Status));
+            }
         }
     }
 }
