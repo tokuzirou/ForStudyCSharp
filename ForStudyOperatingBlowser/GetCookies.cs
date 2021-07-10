@@ -12,9 +12,9 @@ namespace ForStudyOperatingBlowser
     class GetCookies
     {
         private readonly EdgeDriverService service = EdgeDriverService.CreateDefaultService(@"C:\webDriver", "msedgedriver.exe");
-        private readonly Object lockObject = new object();
 
         public IWebDriver Driver { get; }
+        public IReadOnlyCollection<Cookie> Cookies { get; set; }
 
         public GetCookies()
         {
@@ -24,95 +24,48 @@ namespace ForStudyOperatingBlowser
         public IReadOnlyCollection<Cookie> GetAllCookies()
         { 
             IReadOnlyCollection<Cookie> cookies = Driver.Manage().Cookies.AllCookies;
+            Console.WriteLine("A");
+            Task.Delay(10000).ContinueWith((_) => Console.WriteLine("VVV"));
             return cookies;
         }
 
-        public async Task WriteCookieFileAsync(IReadOnlyCollection<Cookie> cookies, string directoryPath, string filePath)
+        public Task GetIOAsync(string directoryPath, string filePath)
         {
             string absolutePath = directoryPath + @"\" + filePath;
-            //List<Task> tasks = default(List<Task>);
-            ////呼び出し元に戻り、タスクの完了を待つ
-            //await Task.Run(() =>
-            //{
-            //    if (!Directory.Exists(directoryPath))
-            //        Directory.CreateDirectory(absolutePath);
-            //    if (!File.Exists(absolutePath))
-            //        File.Create(absolutePath).Close();
-            //    Console.WriteLine("CDCCC");
-            //    Console.WriteLine("FFFASSSJEDWHIW");
-            //}).ContinueWith(async (_) =>
-            //{
-            //    //非同期ファイル生成処理
-            //    //呼び出し元(ContinueWithのデリゲート引数部分)に戻る
-            //    //次のContinueWithがあるので、先にそれを実行
-            //    //完了したらTaskを即実行
-            //    await Task.Run(() =>
-            //    {
-            //        if (!File.Exists(absolutePath))
-            //            File.Create(absolutePath).Close();
-            //        Console.WriteLine("CDCCC");
-            //    });
-
-            //    //上のTaskを待機したのちに実行
-            //    //非同期ファイル生成を待てる処理
-            //    Console.WriteLine("AAAAA");
-            //}).ContinueWith((_) =>
-            //{
-            //    //非同期ファイル生成処理を待てない処理(下の処理より優先度高い)←上から下の同期処理にもどるから
-            //    Console.WriteLine("FFFFFFF");
-            //});
-
-            //非同期ファイル生成処理を待てない処理(上の処理より優先度低い)
-            Console.WriteLine("1,2");
-            await Task.Run(() =>
-            {
-                lock (lockObject)
-                {
-                    using (StreamWriter sw = new StreamWriter(absolutePath))
-                    {
-                        sw.WriteLine(cookies.ToString());
-                        Console.WriteLine("GGGGGGGG");
-                    }
-                }
-            });
-        }
-
-        public async Task getIOAsync(string directoryPath, string filePath)
-        {
-            string absolutePath = directoryPath + @"\" + filePath;
-            //呼び出し元に戻り、タスクの完了を待つ
-            await Task.Run(() =>
+            //タスクオブジェクトを返す(呼び出し元でawaitさせて、別のスレッドでタスクを起動させる)
+            //呼び出し元のスレッドがフリーズしないことに意味がある＝タスク処理が遅いかもだけど、UIがフリーズしない
+            return Task.Run(() =>
             {
                 if (!Directory.Exists(directoryPath))
                     Directory.CreateDirectory(absolutePath);
+                Console.WriteLine("taskAの終了");
+            }).ContinueWith((_) =>
+            {
+                Console.WriteLine("継続taskBの始まり");
+                //上のTaskが完了次第、ContinueWithは実行される
+                //CdontinueWithをTaskにすることも可能
+                //awaitしない場合、当然このスレッド(非同期スレッド)ではフリーズし、メインスレッドではしない
+                //ちなみに、Task.Runで非同期スレッドに飛ばされるので、この継続ブロックを終了するのを待たずに、次の継続が実行される可能性有
                 if (!File.Exists(absolutePath))
                     File.Create(absolutePath).Close();
                 Console.WriteLine("CDCCC");
-                Console.WriteLine("FFFASSSJEDWHIW");
-            }).ContinueWith(async (_) =>
-            {
-                //非同期ファイル生成処理
-                //呼び出し元(ContinueWithのデリゲート引数部分)に戻る
-                //次のContinueWithがあるので、先にそれを実行
-                //完了したらTaskを即実行
-
-                await Task.Run(() =>
-                {
-                    lock (lockObject)
-                    {
-                        if (!File.Exists(absolutePath))
-                            File.Create(absolutePath).Close();
-                        Console.WriteLine("CDCCC");
-                    }
-                });
-
-                //上のTaskを待機したのちに実行
-                //非同期ファイル生成を待てる処理
-                Console.WriteLine("AAAAA");
+                Console.WriteLine("継続taskBの終了");
             }).ContinueWith((_) =>
             {
-                //非同期ファイル生成処理を待てない処理(下の処理より優先度高い)←上から下の同期処理にもどるから
-                Console.WriteLine("FFFFFFF");
+                Console.WriteLine("継続taskCの始まり");
+                Task.Run(() =>
+                {
+                    //排他的に処理しても、こっちが先に実行されると、absolutePathにファイルが存在するとは限らないのでエラー
+                    //変える必要有
+                    //Taskをnewだけして、下のメソッドの中でawaitで呼び出す形式するか、ラムダにするか
+                    using (StreamWriter sw = new StreamWriter(absolutePath))
+                    {
+                        sw.WriteLine(Cookies.ToString());
+                        Console.WriteLine("GGGGGGGG");
+                    }
+                });
+                Console.WriteLine("継続taskCの終了(上のタスクは別の非同期スレッドに飛ばされたまま)");
+                Task.Delay(2000).ContinueWith((task) => Console.WriteLine(task.Status));
             });
         }
     }
