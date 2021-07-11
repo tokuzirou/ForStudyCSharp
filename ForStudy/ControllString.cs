@@ -12,7 +12,6 @@ namespace ForStudy
         private static string str = "Hello";
         private static string str1 = default;
         private static bool judge = default;
-        private int k = 1;
         //staticクラスなのでNullable型の変数を宣言できない
         //private Nullable nullable = default;
 

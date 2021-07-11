@@ -30,20 +30,34 @@ namespace ForStudy
                 stopwatch.Start();
                 Task<WebResponse> myHttpWebResponseTask = myWebRequest.GetResponseAsync();
                 int taskId = myHttpWebResponseTask.Id;
-                using(WebResponse myHttpWebResponse = await myHttpWebResponseTask){
-                    stopwatch.Stop();
-                    TimeSpan timeSpan = stopwatch.Elapsed;
-                    Console.WriteLine($"ダウンロード経過時間: {timeSpan.Milliseconds}msec");
-                    Console.WriteLine($"task number {myHttpWebResponseTask.Id} is done.");
-                    Console.WriteLine("ダウンロード完了");
-                    Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
-                    using (var streamReader = new StreamReader(myHttpWebResponseStream))
+                try
+                {
+                    using (WebResponse myHttpWebResponse = await myHttpWebResponseTask)
                     {
-                        string jsonString = streamReader.ReadToEnd();
-                        jsonDict[dateTime] = jsonString;
+                        stopwatch.Stop();
+                        TimeSpan timeSpan = stopwatch.Elapsed;
+                        Console.WriteLine($"ダウンロード経過時間: {timeSpan.Milliseconds}msec");
+                        Console.WriteLine($"task number {taskId} is done.");
+                        Console.WriteLine("ダウンロード完了");
+                        Stream myHttpWebResponseStream = myHttpWebResponse.GetResponseStream();
+                        using (var streamReader = new StreamReader(myHttpWebResponseStream))
+                        {
+                            string jsonString = streamReader.ReadToEnd();
+                            jsonDict[dateTime] = jsonString;
+                        }
                     }
+                }catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
                 }
-                await Task.Delay(1000);
+
+                try
+                {
+                    await Task.Delay(1000);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
             }
             return jsonDict;
         }
@@ -51,60 +65,77 @@ namespace ForStudy
         internal static async Task<JsonElement> DeserializeAsync(string jsonString)
         {
             Encoding encoding = Encoding.GetEncoding("utf-8");
+            JsonDocument document = default;
             using (MemoryStream memoryStream = new MemoryStream(encoding.GetBytes(jsonString)))
             {
-                using (Task<JsonDocument> documentTask = JsonDocument.ParseAsync(memoryStream))
+                try
                 {
-                    JsonDocument document = await documentTask;
-                    return document.RootElement.Clone();
+                    using (Task<JsonDocument> documentTask = JsonDocument.ParseAsync(memoryStream))
+                        document = await documentTask;
+                }catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
                 }
+            }
+            return document.RootElement.Clone();
+        }
+
+        internal static async Task Move(string directoryPath)
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    Directory.CreateDirectory(directoryPath);
+                    Directory.SetCurrentDirectory(directoryPath);
+                });
+            }catch(Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
             }
         }
 
-        internal static async Task MoveAsync(string directoryPath)
-        {
-            await Task.Run(() => {
-                Directory.CreateDirectory(directoryPath);
-                Directory.SetCurrentDirectory(directoryPath);
-            });
-        }
-
-        internal static async Task SaveAsync(JsonElement collection, string filePath)
+        internal static async Task Save(JsonElement collection, string filePath)
         {
             using (StreamWriter sw = new StreamWriter(filePath))
             {
                 JsonElement document = collection.GetProperty("weather");
                 JsonElement.ArrayEnumerator weatherCollection = document.EnumerateArray(); 
                 Task[] tasks = new Task[3];
+                //LINQで書きたい
                 foreach (JsonElement weather in weatherCollection)
-                {
-                    void TakeWeatherIconAsync()
-                    {
-                        string weatherIcon = weather.GetProperty("icon").ToString();
-                        string donloadOption = "2x.png";
-                        string uri = @"https://openweathermap.org/img/wn/" + weatherIcon + '@' + donloadOption;
-                        Uri uri1 = new Uri(uri);
-                        WebClient webClient = new WebClient();
-                        webClient.DownloadFileAsync(uri1, donloadOption);
-                    }
-                    TakeWeatherIconAsync();
-                    Task task1 = Task.Run(() =>
+                { 
+                    TakeWeatherIconAsync(weather);
+                    tasks[0] = Task.Run(() =>
                     {
                         sw.WriteLine("id:" + weather.GetProperty("id"));
                     });
-                    tasks[0] = task1;
-                    Task task2 = Task.Run(() =>
+                    tasks[1] = Task.Run(() =>
                     {
                         sw.WriteLine("main:" + weather.GetProperty("main"));
                     });
-                    tasks[1] = task2;
-                    Task task3 = Task.Run(() =>
+                    tasks[2] = Task.Run(() =>
                     {
                         sw.WriteLine("description:" + weather.GetProperty("description"));
                     });
-                    tasks[2] = task3;
-                    await Task.WhenAll(tasks);
+                    try
+                    {
+                        await Task.WhenAll(tasks);
+                    }catch(AggregateException agex)
+                    {
+                        Console.WriteLine(agex.ToString());
+                    }
                 }
+            }
+
+            void TakeWeatherIconAsync(JsonElement weather)
+            {
+                string weatherIcon = weather.GetProperty("icon").ToString();
+                string donloadOption = "2x.png";
+                string uri = @"https://openweathermap.org/img/wn/" + weatherIcon + '@' + donloadOption;
+                Uri uri1 = new Uri(uri);
+                WebClient webClient = new WebClient();
+                webClient.DownloadFileAsync(uri1, donloadOption);
             }
         }
     }
