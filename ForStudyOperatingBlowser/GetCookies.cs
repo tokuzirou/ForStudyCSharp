@@ -81,6 +81,11 @@ namespace ForStudyOperatingBlowser
                         Console.WriteLine("GGGGGGGG");
                     }
                 });
+                //通常通り、try内での例外が発生すれば、throwされる
+                //このワーカースレッドでの例外はメインスレッドに伝搬するので、呼び出し側は例外処理はしなくて済む
+                //勿論、メソッド内でTaskオブジェクトの戻り値を返却する構造でないタイプのメソッドはメインスレッドに伝搬されないので、
+                //メソッド内で例外処理をすることになる
+                //throw new Exception("成功");
             }
             catch(Exception ex)
             {
